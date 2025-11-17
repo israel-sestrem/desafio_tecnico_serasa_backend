@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/weighings")
 @RequiredArgsConstructor
@@ -16,15 +18,16 @@ public class WeighingController {
     private final WeighingService weighingIngestionService;
 
     @PostMapping("/insert")
-    public ResponseEntity<?> insert(@RequestBody WeighingInsertionRequestDto request) {
-        try {
-            return weighingIngestionService.insertRawWeighing(request)
-                    .<ResponseEntity<?>>map(weighing ->
-                            ResponseEntity.status(HttpStatus.CREATED)
-                                    .body(WeighingResponseDto.from(weighing)))
-                    .orElseGet(() -> ResponseEntity.accepted().body("Weight still not stable"));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<?> insert(
+            @RequestHeader("X-Scale-Token") String token,
+            @RequestBody WeighingInsertionRequestDto request
+    ) {
+        return weighingIngestionService.insertRawWeighing(request, token)
+                .<ResponseEntity<?>>map(weighing -> ResponseEntity.status(HttpStatus.CREATED)
+                        .body(WeighingResponseDto.from(weighing)))
+                .orElseGet(() -> ResponseEntity.accepted().body(Map.of(
+                        "status", "PENDING_STABILIZATION",
+                        "message", "Weight not stable yet"
+                )));
     }
 }

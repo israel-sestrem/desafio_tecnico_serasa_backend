@@ -1,5 +1,6 @@
 package com.grain_weighing.services;
 
+import com.grain_weighing.config.StabilizationProperties;
 import com.grain_weighing.dto.WeighingInsertionRequestDto;
 import com.grain_weighing.entities.*;
 import com.grain_weighing.enums.WeighingType;
@@ -11,56 +12,58 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
 public class WeighingService {
-
-    private static final int REQUIRED_STABLE_READINGS = 5;
-    private static final BigDecimal MAX_DIFF_BETWEEN_READINGS_KG = new BigDecimal("50.0");
+    private final StabilizationProperties properties;
 
     private final ScaleRepository scaleRepository;
     private final TruckRepository truckRepository;
-    private final GrainTypeRepository grainTypeRepository;
     private final TransportTransactionRepository transportTransactionRepository;
     private final WeighingRepository weighingRepository;
 
-    private final Map<String, StabilizationState> stateByKey = new HashMap<>();
+    private final Map<String, StabilizationState> stateByKey = new ConcurrentHashMap<>();
 
     @Transactional
-    public Optional<WeighingEntity> insertRawWeighing(WeighingInsertionRequestDto request) {
+    public Optional<WeighingEntity> insertRawWeighing(WeighingInsertionRequestDto request, String token) {
+        ScaleEntity scale = scaleRepository.findByExternalId(request.scaleExternalId())
+                .orElseThrow(() -> new IllegalArgumentException("Scale not found"));
+
+        if (!scale.isActive())
+            throw new IllegalStateException("Scale is disabled");
+
+        if (!Objects.equals(scale.getApiToken(), token))
+            throw new SecurityException("Invalid scale token");
+
         String key = buildKey(request.scaleExternalId(), request.licensePlate());
         BigDecimal currentWeight = request.weight();
 
         StabilizationState state = stateByKey.get(key);
         if (state == null) {
-            state = new StabilizationState(currentWeight, 1, false);
-            stateByKey.put(key, state);
+            stateByKey.put(key, new StabilizationState(currentWeight, 1, false, System.currentTimeMillis()));
             return Optional.empty();
         }
 
         BigDecimal diff = currentWeight.subtract(state.lastWeight()).abs();
-        if (diff.compareTo(MAX_DIFF_BETWEEN_READINGS_KG) > 0) {
-            state = new StabilizationState(currentWeight, 1, false);
-            stateByKey.put(key, state);
+        if (diff.compareTo(properties.getMaxDiffBetweenReadingsKg()) > 0) {
+            stateByKey.put(key, new StabilizationState(currentWeight, 1, false, System.currentTimeMillis()));
             return Optional.empty();
         }
 
         int newCount = state.stableCount() + 1;
         boolean alreadyStabilized = state.stabilized();
 
-        state = new StabilizationState(currentWeight, newCount, alreadyStabilized);
-        stateByKey.put(key, state);
+        stateByKey.put(key, new StabilizationState(currentWeight, newCount, alreadyStabilized, System.currentTimeMillis()));
 
-        if (!alreadyStabilized && newCount >= REQUIRED_STABLE_READINGS) {
-            state = new StabilizationState(currentWeight, newCount, true);
-            stateByKey.put(key, state);
+        if (!alreadyStabilized && newCount >= properties.getRequiredStableReadings()) {
+            stateByKey.put(key, new StabilizationState(currentWeight, newCount, true, System.currentTimeMillis()));
 
-            WeighingEntity weighing = persistStabilizedWeighing(request);
+            WeighingEntity weighing = persistStabilizedWeighing(request, scale);
             return Optional.of(weighing);
         }
 
@@ -71,10 +74,7 @@ public class WeighingService {
         return scaleExternalId + "|" + licensePlate;
     }
 
-    private WeighingEntity persistStabilizedWeighing(WeighingInsertionRequestDto request) {
-        ScaleEntity scale = scaleRepository.findByExternalId(request.scaleExternalId())
-                .orElseThrow(() -> new IllegalArgumentException("Scale not found: " + request.scaleExternalId()));
-
+    private WeighingEntity persistStabilizedWeighing(WeighingInsertionRequestDto request, ScaleEntity scale) {
         TruckEntity truck = truckRepository.findByLicensePlate(request.licensePlate())
                 .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + request.licensePlate()));
 
@@ -99,7 +99,6 @@ public class WeighingService {
         LocalDateTime now = LocalDateTime.now();
 
         WeighingEntity weighing = WeighingEntity.builder()
-                .id(UUID.randomUUID())
                 .licensePlate(truck.getLicensePlate())
                 .grossWeightKg(grossWeightKg)
                 .tareWeightKg(tareKg)
@@ -119,6 +118,7 @@ public class WeighingService {
     private record StabilizationState(
             BigDecimal lastWeight,
             int stableCount,
-            boolean stabilized
+            boolean stabilized,
+            long lastUpdateMillis
     ) {}
 }
