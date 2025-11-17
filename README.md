@@ -163,13 +163,13 @@ Calcula receita e lucro
 
 Salva consolidação na transação
 
-## Execução Local
+## Execução Local -> app + banco
 
 Criar banco:
 
 CREATE DATABASE grain_weighing;
 
-Configurar application.properties ou application.yml:
+Configurar application.properties:
 
 spring.datasource.url=jdbc:postgresql://localhost:15432/grain_weighing
 
@@ -179,25 +179,20 @@ spring.datasource.password=pass
 
 spring.jpa.hibernate.ddl-auto=validate
 
+Rodar servidor do banco:
 
-Rodar:
+docker run --name postgres-local ^
+  -e POSTGRES_DB=grain_weighing ^
+  -e POSTGRES_USER=user ^
+  -e POSTGRES_PASSWORD=pass ^
+  -p 15432:5432 ^
+  -d postgres:16
+
+Rodar aplicação:
 
 mvn spring-boot:run
 
-## Executar via Docker
-
-Build:
-
-mvn clean package -DskipTests
-
-
-Subir:
-
-docker compose up --build
-
-API → http://localhost:8080
-
-Banco → localhost:15432
+Padrão: http://localhost:8080
 
 ## Swagger
 
