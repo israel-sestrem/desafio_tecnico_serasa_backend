@@ -62,9 +62,7 @@ Baseada em N leituras consecutivas similares:
 yaml
 
 grain-weighing.stabilization:
-
   required-stable-readings: 5
-  
   max-diff-between-readings-kg: 50
 
 Regra:
@@ -74,6 +72,7 @@ Se a diferença ≤ limite → contador++
 Se a diferença > limite → contador = 0
 
 Se contador = required-stable-readings → peso estabilizado → salva no banco
+
 
 Estratégia alternativa (opcional)
 
@@ -85,9 +84,11 @@ Código já preparado para essa possível troca.
 
 Toda balança possui apiToken.
 
+
 O ESP32 deve enviar:
 
 X-Scale-Token: <token>
+
 
 Fluxo:
 
@@ -127,6 +128,7 @@ Listagem
 
 GET /api/reports/weighings?start=...&end=...&branchId=...&truckId=...&grainTypeId=...
 
+
 Resumo
 
 GET /api/reports/summary?...
@@ -145,6 +147,7 @@ Retorno:
 Abrir
 
 POST /api/transport-transactions
+
 
 Fechar
 
@@ -176,6 +179,7 @@ spring.datasource.password=pass
 
 spring.jpa.hibernate.ddl-auto=validate
 
+
 Rodar:
 
 mvn spring-boot:run
@@ -185,6 +189,7 @@ mvn spring-boot:run
 Build:
 
 mvn clean package -DskipTests
+
 
 Subir:
 
