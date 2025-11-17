@@ -4,6 +4,8 @@ import com.grain_weighing.dto.TruckRequestDto;
 import com.grain_weighing.dto.TruckResponseDto;
 import com.grain_weighing.entities.TruckEntity;
 import com.grain_weighing.repositories.TruckRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +17,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/trucks")
 @RequiredArgsConstructor
+@Tag(name = "Trucks", description = "Truck management")
 public class TruckController {
 
     private final TruckRepository truckRepository;
 
     @PostMapping
+    @Operation(summary = "Create a new truck")
     public ResponseEntity<TruckResponseDto> create(@RequestBody TruckRequestDto request) {
         TruckEntity truck = TruckEntity.builder()
                 .licensePlate(request.licensePlate())
@@ -42,6 +46,7 @@ public class TruckController {
     }
 
     @GetMapping
+    @Operation(summary = "List all trucks")
     public List<TruckResponseDto> list() {
         return truckRepository.findAll().stream()
                 .map(t -> new TruckResponseDto(
@@ -55,6 +60,7 @@ public class TruckController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get truck by ID")
     public ResponseEntity<TruckResponseDto> get(@PathVariable UUID id) {
         return truckRepository.findById(id)
                 .map(t -> ResponseEntity.ok(new TruckResponseDto(

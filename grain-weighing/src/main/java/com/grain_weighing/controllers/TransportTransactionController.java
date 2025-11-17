@@ -4,6 +4,8 @@ import com.grain_weighing.dto.TransportTransactionRequestDto;
 import com.grain_weighing.dto.TransportTransactionResponseDto;
 import com.grain_weighing.entities.*;
 import com.grain_weighing.repositories.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/transport-transactions")
 @RequiredArgsConstructor
+@Tag(name = "Transport Transactions", description = "Transport transaction management")
 public class TransportTransactionController {
 
     private final TransportTransactionRepository transportTransactionRepository;
@@ -27,6 +30,7 @@ public class TransportTransactionController {
     private final WeighingRepository weighingRepository;
 
     @PostMapping("/open")
+    @Operation(summary = "Open a new transport transaction")
     public ResponseEntity<?> open(@RequestBody TransportTransactionRequestDto request) {
         TruckEntity truck = truckRepository.findById(request.truckId())
                 .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + request.truckId()));
@@ -64,6 +68,7 @@ public class TransportTransactionController {
     }
 
     @PostMapping("/{id}/close")
+    @Operation(summary = "Close a transport transaction")
     public ResponseEntity<?> close(@PathVariable UUID id) {
         TransportTransactionEntity tt = transportTransactionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Transport transaction not found: " + id));
