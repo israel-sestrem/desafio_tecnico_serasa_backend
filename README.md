@@ -1,6 +1,7 @@
 ## Grain Weighing System – Backend
 
 Sistema para inserção, estabilização e registro de pesagens enviadas por balanças ESP32.  
+
 Construído com Spring Boot 3, PostgreSQL, Flyway, Docker e Swagger.
 
 
@@ -55,12 +56,15 @@ IDs são UUID. Migrações via Flyway (`V1__create_tables.sql`).
 As leituras chegam a cada 100ms.
 
 Estratégia padrão (implementada)
+
 Baseada em N leituras consecutivas similares:
 
 yaml
 
 grain-weighing.stabilization:
+
   required-stable-readings: 5
+  
   max-diff-between-readings-kg: 50
 
 Regra:
@@ -72,12 +76,15 @@ Se a diferença > limite → contador = 0
 Se contador = required-stable-readings → peso estabilizado → salva no banco
 
 Estratégia alternativa (opcional)
+
 Peso estável por janela de tempo (ex.: 3 segundos).
+
 Código já preparado para essa possível troca.
 
 ## Autenticação das Balanças
 
 Toda balança possui apiToken.
+
 O ESP32 deve enviar:
 
 X-Scale-Token: <token>
@@ -85,7 +92,9 @@ X-Scale-Token: <token>
 Fluxo:
 
 Busca balança pelo externalId
+
 Valida apiToken
+
 Bloqueia requisições não autorizadas
 
 ## Endpoint de Inserção (ESP32)
@@ -93,9 +102,11 @@ Bloqueia requisições não autorizadas
 POST /api/weighings/insert
 
 Headers:
+
 X-Scale-Token: <token>
 
 Body:
+
 {
   "id": "scale-001",
   "plate": "ABC1D23",
@@ -105,6 +116,7 @@ Body:
 Respostas:
 
 201 Created → pesagem estabilizada
+
 202 Accepted → ainda estabilizando
 
 Erros padronizados via @RestControllerAdvice
@@ -112,12 +124,15 @@ Erros padronizados via @RestControllerAdvice
 ## Relatórios
 
 Listagem
+
 GET /api/reports/weighings?start=...&end=...&branchId=...&truckId=...&grainTypeId=...
 
 Resumo
+
 GET /api/reports/summary?...
 
 Retorno:
+
 {
   "totalNetWeightKg": 38400,
   "totalLoadCost": 18250.75,
@@ -128,9 +143,11 @@ Retorno:
 ## Transações de Transporte
 
 Abrir
+
 POST /api/transport-transactions
 
 Fechar
+
 POST /api/transport-transactions/{id}/close
 
 Ao fechar:
@@ -185,6 +202,9 @@ http://localhost:8080/v3/api-docs
 
 ## Evoluções Futuras
 Idempotência mais pesada utilizando chave baseada em external_id + timestamp, por exemplo.
+
 Kafka/SQS para inserção assíncrona
+
 Métricas com grafana
+
 Dashboard realtime via WebSockets
