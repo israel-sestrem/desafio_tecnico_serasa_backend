@@ -87,7 +87,7 @@ Toda balança possui apiToken.
 
 O ESP32 deve enviar:
 
-X-Scale-Token: <token>
+X-Scale-Token: "token"
 
 
 Fluxo:
@@ -104,7 +104,7 @@ POST /api/weighings/insert
 
 Headers:
 
-X-Scale-Token: <token>
+X-Scale-Token: "token"
 
 Body:
 
