@@ -1,202 +1,180 @@
-Título: Grain Weighing Service – Desafio Técnico Serasa Experian
+## Grain Weighing System – Backend
 
-Descrição geral:
-Este projeto implementa uma API para receber, estabilizar e armazenar pesagens de caminhões em balanças industriais, calcular custo da carga, estimar lucro e fornecer relatórios operacionais. A solução atende ao cenário proposto no desafio técnico da vaga de Analista de Desenvolvimento de Software Sênior da Serasa Experian.
+Sistema para inserção, estabilização e registro de pesagens enviadas por balanças ESP32.  
+Construído com Spring Boot 3, PostgreSQL, Flyway, Docker e Swagger.
 
-Tecnologias utilizadas:
 
-Java 17
+## Objetivo
 
-Spring Boot 3
+- Receber leituras de peso (100ms cada) das balanças
+- Detectar automaticamente o momento de estabilização
+- Registrar pesagens (bruto, tara, líquido, custo)
+- Controlar transações de transporte (início/fim)
+- Fornecer relatórios de custo e lucro possível
 
-Spring Web
 
-Spring Data JPA
+## Arquitetura
 
-Spring Validation
+Tecnologias:
+- Java 17, Spring Web, Spring Data JPA, Flyway  
+- PostgreSQL  
+- Lombok  
+- Docker + Docker Compose  
+- Springdoc OpenAPI (Swagger)
 
-PostgreSQL
 
-Lombok
+## Modelagem (Resumo das Entidades)
 
-Docker e Docker Compose (opcional)
+Branch
+`id`, `code`, `name`, `city`, `state`
 
-Springdoc OpenAPI (Swagger)
+Truck
+`id`, `licensePlate`, `tareWeightKg`, `model`, `active`
 
-JUnit 5 e Spring Boot Test
+GrainType
+`id`, `name`, `purchasePricePerTon`, `minMargin`, `maxMargin`
 
-Arquitetura:
-O projeto segue arquitetura em camadas:
+Scale
+`id`, `externalId`, `description`, `branch`, `apiToken`, `active`
 
-controller: rotas e comunicação HTTP
+TransportTransaction
+`id`, `truck`, `branch`, `grainType`, `startTimestamp`, `endTimestamp`,  
+`purchasePricePerTon`, `salePricePerTon`,  
+`totalNetWeightKg`, `totalLoadCost`, `totalEstimatedRevenue`, `estimatedProfit`
 
-service: regras de negócio e orquestração
+Weighing
+`id`, `licensePlate`, `grossWeightKg`, `tareWeightKg`, `netWeightKg`,  
+`weighingTimestamp`, `scale`, `truck`, `grainType`,  
+`transportTransaction`, `loadCost`, `weighingType`
 
-repository: camada de persistência via JPA
+IDs são UUID. Migrações via Flyway (`V1__create_tables.sql`).
 
-domain: entidades e modelos persistidos
 
-dto: objetos de entrada e saída
+## Estabilização do Peso
 
-stabilization: componente responsável pela estabilização das leituras
+As leituras chegam a cada 100ms.
 
-Modelagem das entidades:
+Estratégia padrão (implementada)
+Baseada em N leituras consecutivas similares:
 
-Filial (Branch):
-id, name, code
+yaml
 
-Tipo de Grão (GrainType):
-id, name, purchasePrice (valor por tonelada), currentStockTons (estoque atual)
+grain-weighing.stabilization:
+  required-stable-readings: 5
+  max-diff-between-readings-kg: 50
 
-Caminhão (Truck):
-id, plate, taraKg (peso do caminhão vazio), active
+Regra:
 
-Balança (Scale):
-id, scaleCode (id recebido do ESP32), branchId, authToken (opcional)
+Se a diferença ≤ limite → contador++
 
-Transação de Transporte (TransportTransaction):
-id, truckId, grainTypeId, branchId, startTime, endTime, status (OPEN ou CLOSED)
+Se a diferença > limite → contador = 0
 
-Pesagem Estabilizada (Weighing):
-id, transportId, truckId, grainTypeId, branchId, scaleId, plate, grossWeightKg, tareKg, netWeightKg, weighingTime, costValue, saleValue, profitValue
+Se contador = required-stable-readings → peso estabilizado → salva no banco
 
-Recepção das leituras (ESP32):
-O ESP32 envia leituras aproximadamente a cada 100ms no seguinte formato:
+Estratégia alternativa (opcional)
+Peso estável por janela de tempo (ex.: 3 segundos).
+Código já preparado para essa possível troca.
+
+## Autenticação das Balanças
+
+Toda balança possui apiToken.
+O ESP32 deve enviar:
+
+X-Scale-Token: <token>
+
+Fluxo:
+
+Busca balança pelo externalId
+Valida apiToken
+Bloqueia requisições não autorizadas
+
+## Endpoint de Inserção (ESP32)
+
+POST /api/weighings/insert
+
+Headers:
+X-Scale-Token: <token>
+
+Body:
 {
-"id": "scale-01",
-"plate": "ABC1234",
-"weight": 32450
+  "id": "scale-001",
+  "plate": "ABC1D23",
+  "weight": 31800.75
 }
-O endpoint implementado é:
-POST /api/weighings/stream
 
-Fluxo do endpoint:
+Respostas:
 
-Valida se a balança existe.
+201 Created → pesagem estabilizada
+202 Accepted → ainda estabilizando
 
-Valida autorização da balança (opcional).
+Erros padronizados via @RestControllerAdvice
 
-Busca o caminhão pela placa.
+## Relatórios
 
-Localiza a transação de transporte aberta.
+Listagem
+GET /api/reports/weighings?start=...&end=...&branchId=...&truckId=...&grainTypeId=...
 
-Envia a leitura para o estabilizador.
+Resumo
+GET /api/reports/summary?...
 
-Quando estabilizar, calcula peso líquido, custo, margem, lucro e grava no banco.
+Retorno:
+{
+  "totalNetWeightKg": 38400,
+  "totalLoadCost": 18250.75,
+  "estimatedRevenue": 22398,
+  "estimatedProfit": 4150.25
+}
 
-Estratégia de estabilização:
-Foi adotada uma janela deslizante de 30 leituras por combinação balança + placa, equivalentes a aproximadamente 3 segundos de leitura.
+## Transações de Transporte
 
-A cada leitura:
+Abrir
+POST /api/transport-transactions
 
-O valor é inserido no buffer.
+Fechar
+POST /api/transport-transactions/{id}/close
 
-Se houver menos de 30 leituras, a leitura ainda é considerada instável.
+Ao fechar:
 
-Quando houver 30 leituras, são calculados mínimo, máximo e média.
+Soma pesos líquidos das pesagens
+Soma custo total
+Calcula receita e lucro
+Salva consolidação na transação
 
-A pesagem é considerada estabilizada se:
-diferença entre máximo e mínimo for menor ou igual ao threshold.
-O threshold é calculado como o maior valor entre 20 kg e 0.5% da média das leituras.
-O valor final armazenado no banco é a média da janela.
-Após estabilizar, o buffer é limpo e somente uma nova pesagem é permitida quando o peso voltar abaixo de 1000 kg, indicando saída do caminhão da balança.
+## Execução Local
 
-Cálculos:
+Criar banco:
 
-Peso líquido:
-peso líquido = peso bruto estabilizado – tara
+CREATE DATABASE grain_weighing;
+Configurar application.properties ou application.yml:
 
-Custo:
-custo = (peso líquido / 1000) multiplicado pelo preço de compra por tonelada
+spring.datasource.url=jdbc:postgresql://localhost:15432/grain_weighing
+spring.datasource.username=user
+spring.datasource.password=pass
+spring.jpa.hibernate.ddl-auto=validate
 
-Margem:
-A margem varia entre 5% e 20% dependendo do estoque do tipo de grão:
-estoque baixo → margem 20%
-estoque médio → margem entre 12% e 15%
-estoque alto → margem mínima de 5%
+Rodar:
 
-Preço de venda:
-preço de venda = custo multiplicado por (1 + margem)
+mvn spring-boot:run
 
-Lucro:
-lucro = preço de venda – custo
+## Executar via Docker
 
-Relatórios (endpoints):
-Todos com filtro via query params.
+Build:
 
-Pesagens:
-GET /api/reports/weighings
-Parâmetros opcionais: branchId, truckId, grainTypeId, startDate, endDate
+mvn clean package -DskipTests
 
-Custos:
-GET /api/reports/costs
+Subir:
 
-Lucros possíveis:
-GET /api/reports/profits
+docker compose up --build
+API → http://localhost:8080
+Banco → localhost:15432
 
-Execução sem Docker:
+## Swagger
 
-Criar banco grain_db no PostgreSQL
-
-Ajustar application.yml
-
-Executar:
-mvn clean package
-java -jar target/grain-weighing-service.jar
-A API ficará disponível em http://localhost:8080
-
-Execução com Docker (opcional):
-Gerar o jar:
-mvn clean package
-
-Dockerfile:
-FROM eclipse-temurin:17-jdk
-WORKDIR /app
-COPY target/app.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
-docker-compose.yml:
-Define serviços app e db com PostgreSQL e aplicação Spring Boot.
-
-Swagger:
-Disponível em:
 http://localhost:8080/swagger-ui.html
+http://localhost:8080/v3/api-docs
 
-Testes implementados:
-
-Testes unitários para a lógica de estabilização
-
-Testes de integração para principais endpoints
-
-Testes de regra de negócio para cálculos de peso, custo e lucro
-
-Estrutura de pastas:
-controller, service, repository, domain, dto, stabilization, main application class.
-
-Decisões técnicas:
-
-Janela deslizante de 30 leituras
-
-Threshold híbrido (valor fixo + percentual)
-
-BigDecimal para precisão
-
-Banco relacional para agregações dos relatórios
-
-Melhorias futuras:
-
-Cache distribuído
-
-Kafka para streaming real
-
-Dashboard realtime
-
-Alertas automáticos
-
-Autenticação JWT
-
-Tokens individuais para balanças
-
-Autor:
-Israel Ricardo Sestrem
+## Evoluções Futuras
+Idempotência mais pesada utilizando chave baseada em external_id + timestamp, por exemplo.
+Kafka/SQS para inserção assíncrona
+Métricas com grafana
+Dashboard realtime via WebSockets
