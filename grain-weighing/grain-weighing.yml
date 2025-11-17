@@ -1,4 +1,0 @@
-grain-weighing:
-  stabilization:
-    required-stable-readings: 5
-    max-diff-between-readings-kg: 50.0
