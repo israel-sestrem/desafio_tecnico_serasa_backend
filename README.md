@@ -136,8 +136,11 @@ POST /api/transport-transactions/{id}/close
 Ao fechar:
 
 Soma pesos líquidos das pesagens
+
 Soma custo total
+
 Calcula receita e lucro
+
 Salva consolidação na transação
 
 ## Execução Local
@@ -145,11 +148,15 @@ Salva consolidação na transação
 Criar banco:
 
 CREATE DATABASE grain_weighing;
+
 Configurar application.properties ou application.yml:
 
 spring.datasource.url=jdbc:postgresql://localhost:15432/grain_weighing
+
 spring.datasource.username=user
+
 spring.datasource.password=pass
+
 spring.jpa.hibernate.ddl-auto=validate
 
 Rodar:
@@ -165,12 +172,15 @@ mvn clean package -DskipTests
 Subir:
 
 docker compose up --build
+
 API → http://localhost:8080
+
 Banco → localhost:15432
 
 ## Swagger
 
 http://localhost:8080/swagger-ui.html
+
 http://localhost:8080/v3/api-docs
 
 ## Evoluções Futuras
