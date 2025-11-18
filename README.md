@@ -2,7 +2,7 @@
 
 Sistema para inserção, estabilização e registro de pesagens enviadas por balanças ESP32.  
 
-Construído com Spring Boot 3, PostgreSQL, Flyway, Docker e Swagger.
+Construído com Spring Boot 3, PostgreSQL, Maven, Flyway, Docker e Swagger.
 
 
 ## Objetivo
@@ -17,7 +17,7 @@ Construído com Spring Boot 3, PostgreSQL, Flyway, Docker e Swagger.
 ## Arquitetura
 
 Tecnologias:
-- Java 17, Spring Web, Spring Data JPA, Flyway  
+- Java 17, Spring Web, Spring Data JPA, Flyway, Maven
 - PostgreSQL  
 - Lombok  
 - Docker + Docker Compose  
@@ -169,7 +169,7 @@ Criar banco:
 
 CREATE DATABASE grain_weighing;
 
-Configurar application.properties:
+Configurações do banco no application.properties:
 
 spring.datasource.url=jdbc:postgresql://localhost:15432/grain_weighing
 
@@ -181,14 +181,13 @@ spring.jpa.hibernate.ddl-auto=validate
 
 Rodar servidor do banco:
 
-docker run --name postgres-local ^
-  -e POSTGRES_DB=grain_weighing ^
-  -e POSTGRES_USER=user ^
-  -e POSTGRES_PASSWORD=pass ^
-  -p 15432:5432 ^
-  -d postgres:16
+No CMD do Windows, acessar a pasta do projeto e rodar o seguinte comando:
+
+docker compose up -d
 
 Rodar aplicação:
+
+Dentro da IDE com o projeto aberto, acessar o terminal e rodar o seguinte comando:
 
 mvn spring-boot:run
 
