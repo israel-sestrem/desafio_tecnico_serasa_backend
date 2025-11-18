@@ -29,7 +29,7 @@ public class TruckEntity {
     private String model;
 
     @Column(nullable = false)
-    private boolean active = true;
+    private boolean active;
 
     @OneToMany(mappedBy = "truck")
     private List<TransportTransactionEntity> transportTransactions;

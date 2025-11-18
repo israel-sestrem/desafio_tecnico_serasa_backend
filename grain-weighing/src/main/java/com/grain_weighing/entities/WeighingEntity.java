@@ -1,6 +1,5 @@
 package com.grain_weighing.entities;
 
-import com.grain_weighing.enums.WeighingType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -53,8 +52,4 @@ public class WeighingEntity {
 
     @Column(name = "load_cost", precision = 15, scale = 2)
     private BigDecimal loadCost;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "weighing_type", length = 20)
-    private WeighingType weighingType;
 }

@@ -20,7 +20,7 @@ public class ScaleEntity {
     private UUID id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "branch_id", nullable = false)
+    @JoinColumn(name = "branch_id", nullable = false, columnDefinition = "uuid")
     private BranchEntity branch;
 
     @Column(name = "external_id", nullable = false, unique = true, length = 50)
@@ -33,7 +33,7 @@ public class ScaleEntity {
     private String apiToken;
 
     @Column(nullable = false)
-    private boolean active = true;
+    private boolean active;
 
     @OneToMany(mappedBy = "scale")
     private List<WeighingEntity> weighings;

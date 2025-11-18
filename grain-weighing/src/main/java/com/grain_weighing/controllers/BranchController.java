@@ -3,9 +3,10 @@ package com.grain_weighing.controllers;
 import com.grain_weighing.dto.BranchRequestDto;
 import com.grain_weighing.dto.BranchResponseDto;
 import com.grain_weighing.entities.BranchEntity;
-import com.grain_weighing.repositories.BranchRepository;
+import com.grain_weighing.services.BranchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,19 +21,12 @@ import java.util.UUID;
 @Tag(name = "Branches", description = "Branch management")
 public class BranchController {
 
-    private final BranchRepository branchRepository;
+    private final BranchService branchService;
 
     @PostMapping
     @Operation(summary = "Create a new branch")
-    public ResponseEntity<BranchResponseDto> create(@RequestBody BranchRequestDto request) {
-        BranchEntity branch = BranchEntity.builder()
-                .code(request.code())
-                .name(request.name())
-                .city(request.city())
-                .state(request.state())
-                .build();
-
-        branch = branchRepository.save(branch);
+    public ResponseEntity<BranchResponseDto> create(@Valid @RequestBody BranchRequestDto request) {
+        BranchEntity branch = branchService.create(request);
 
         return ResponseEntity
                 .created(URI.create("/api/branches/" + branch.getId()))
@@ -45,10 +39,19 @@ public class BranchController {
                 ));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<BranchResponseDto> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody BranchRequestDto request
+    ) {
+        BranchEntity updated = branchService.update(id, request);
+        return ResponseEntity.ok(BranchResponseDto.from(updated));
+    }
+
     @GetMapping
     @Operation(summary = "List all branches")
     public List<BranchResponseDto> list() {
-        return branchRepository.findAll().stream()
+        return branchService.findAll().stream()
                 .map(b -> new BranchResponseDto(
                         b.getId(),
                         b.getCode(),
@@ -62,7 +65,7 @@ public class BranchController {
     @GetMapping("/{id}")
     @Operation(summary = "Get branch by ID")
     public ResponseEntity<BranchResponseDto> get(@PathVariable UUID id) {
-        return branchRepository.findById(id)
+        return branchService.findById(id)
                 .map(b -> ResponseEntity.ok(new BranchResponseDto(
                         b.getId(),
                         b.getCode(),

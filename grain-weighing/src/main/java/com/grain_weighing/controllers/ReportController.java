@@ -2,8 +2,8 @@ package com.grain_weighing.controllers;
 
 import com.grain_weighing.dto.WeighingResponseDto;
 import com.grain_weighing.dto.WeighingSummaryResponseDto;
-import com.grain_weighing.repositories.WeighingRepository;
 import com.grain_weighing.services.ReportService;
+import com.grain_weighing.services.WeighingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import java.util.UUID;
 @Tag(name = "Reports", description = "Reporting endpoints for weighings, costs and profits")
 public class ReportController {
 
-    private final WeighingRepository weighingRepository;
+    private final WeighingService weighingService;
     private final ReportService reportService;
 
     @GetMapping("/weighings")
@@ -36,7 +36,7 @@ public class ReportController {
             @RequestParam(required = false) UUID truckId,
             @RequestParam(required = false) UUID grainTypeId
     ) {
-        return weighingRepository.findByWeighingTimestampBetween(start, end).stream()
+        return weighingService.findByWeighingTimestampBetween(start, end).stream()
                 .filter(w -> branchId == null || w.getScale().getBranch().getId().equals(branchId))
                 .filter(w -> truckId == null || (w.getTruck() != null && w.getTruck().getId().equals(truckId)))
                 .filter(w -> grainTypeId == null || w.getGrainType().getId().equals(grainTypeId))

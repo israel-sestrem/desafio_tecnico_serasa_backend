@@ -1,9 +1,8 @@
 package com.grain_weighing.services;
 
 import com.grain_weighing.config.StabilizationProperties;
-import com.grain_weighing.dto.WeighingInsertionRequestDto;
+import com.grain_weighing.dto.WeighingRequestDto;
 import com.grain_weighing.entities.*;
-import com.grain_weighing.enums.WeighingType;
 import com.grain_weighing.repositories.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -12,9 +11,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -29,8 +26,12 @@ public class WeighingService {
 
     private final Map<String, StabilizationState> stateByKey = new ConcurrentHashMap<>();
 
+    public List<WeighingEntity> findByWeighingTimestampBetween(LocalDateTime start, LocalDateTime end) {
+        return weighingRepository.findByWeighingTimestampBetween(start, end);
+    }
+
     @Transactional
-    public Optional<WeighingEntity> insertRawWeighing(WeighingInsertionRequestDto request, String token) {
+    public Optional<WeighingEntity> insertRawWeighing(WeighingRequestDto request, String token) {
         ScaleEntity scale = scaleRepository.findByExternalId(request.scaleExternalId())
                 .orElseThrow(() -> new IllegalArgumentException("Scale not found"));
 
@@ -39,6 +40,9 @@ public class WeighingService {
 
         if (!Objects.equals(scale.getApiToken(), token))
             throw new SecurityException("Invalid scale token");
+
+        TruckEntity truck = truckRepository.findByLicensePlate(request.licensePlate())
+                .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + request.licensePlate()));
 
         String key = buildKey(request.scaleExternalId(), request.licensePlate());
         BigDecimal currentWeight = request.weight();
@@ -63,7 +67,7 @@ public class WeighingService {
         if (!alreadyStabilized && newCount >= properties.getRequiredStableReadings()) {
             stateByKey.put(key, new StabilizationState(currentWeight, newCount, true, System.currentTimeMillis()));
 
-            WeighingEntity weighing = persistStabilizedWeighing(request, scale);
+            WeighingEntity weighing = persistStabilizedWeighing(request, scale, truck);
             return Optional.of(weighing);
         }
 
@@ -74,10 +78,7 @@ public class WeighingService {
         return scaleExternalId + "|" + licensePlate;
     }
 
-    private WeighingEntity persistStabilizedWeighing(WeighingInsertionRequestDto request, ScaleEntity scale) {
-        TruckEntity truck = truckRepository.findByLicensePlate(request.licensePlate())
-                .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + request.licensePlate()));
-
+    private WeighingEntity persistStabilizedWeighing(WeighingRequestDto request, ScaleEntity scale, TruckEntity truck) {
         Optional<TransportTransactionEntity> openTransactionOpt =
                 transportTransactionRepository.findFirstByTruckAndEndTimestampIsNullOrderByStartTimestampDesc(truck);
 
@@ -109,7 +110,6 @@ public class WeighingService {
                 .grainType(grainType)
                 .transportTransaction(openTransactionOpt.orElse(null))
                 .loadCost(loadCost)
-                .weighingType(WeighingType.INBOUND)
                 .build();
 
         return weighingRepository.save(weighing);

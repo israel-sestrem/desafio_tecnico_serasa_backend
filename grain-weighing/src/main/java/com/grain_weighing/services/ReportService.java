@@ -34,21 +34,38 @@ public class ReportService {
                 .toList();
 
         BigDecimal totalNet = BigDecimal.ZERO;
-        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalCostInternal = BigDecimal.ZERO;
+        BigDecimal totalRevenueInternal = BigDecimal.ZERO;
 
         for (WeighingEntity w : filtered) {
-            if (w.getNetWeightKg() != null) {
-                totalNet = totalNet.add(w.getNetWeightKg());
+
+            BigDecimal net = w.getNetWeightKg() != null ? w.getNetWeightKg() : BigDecimal.ZERO;
+            totalNet = totalNet.add(net);
+
+            BigDecimal tons = net.divide(BigDecimal.valueOf(1000), 6, RoundingMode.HALF_UP);
+
+            if (w.getTransportTransaction() != null &&
+                    w.getTransportTransaction().getPurchasePricePerTon() != null) {
+
+                BigDecimal purchasePrice = w.getTransportTransaction().getPurchasePricePerTon();
+                BigDecimal cost = tons.multiply(purchasePrice);
+                totalCostInternal = totalCostInternal.add(cost);
             }
-            if (w.getLoadCost() != null) {
-                totalCost = totalCost.add(w.getLoadCost());
+
+            if (w.getTransportTransaction() != null &&
+                    w.getTransportTransaction().getSalePricePerTon() != null) {
+
+                BigDecimal salePrice = w.getTransportTransaction().getSalePricePerTon();
+                BigDecimal revenue = tons.multiply(salePrice);
+                totalRevenueInternal = totalRevenueInternal.add(revenue);
             }
         }
 
-        BigDecimal estimatedRevenue = totalCost.multiply(new BigDecimal("1.10"))
-                .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal estimatedProfit = estimatedRevenue.subtract(totalCost)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalCost = totalCostInternal.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal estimatedRevenue = totalRevenueInternal.setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal profitInternal = totalRevenueInternal.subtract(totalCostInternal);
+        BigDecimal estimatedProfit = profitInternal.setScale(2, RoundingMode.HALF_UP);
 
         return new WeighingSummaryResponseDto(
                 totalNet,

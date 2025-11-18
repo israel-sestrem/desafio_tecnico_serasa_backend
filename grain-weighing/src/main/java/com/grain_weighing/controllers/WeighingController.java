@@ -1,11 +1,12 @@
 package com.grain_weighing.controllers;
 
-import com.grain_weighing.dto.WeighingInsertionRequestDto;
+import com.grain_weighing.dto.WeighingRequestDto;
 import com.grain_weighing.dto.WeighingResponseDto;
 import com.grain_weighing.services.WeighingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,7 @@ public class WeighingController {
             @Parameter(description = "API token for the scale, previously registered.")
             @RequestHeader("X-Scale-Token") String token,
 
-            @RequestBody WeighingInsertionRequestDto request
+            @Valid @RequestBody WeighingRequestDto request
     ) {
         return weighingIngestionService.insertRawWeighing(request, token)
                 .<ResponseEntity<?>>map(weighing -> ResponseEntity.status(HttpStatus.CREATED)

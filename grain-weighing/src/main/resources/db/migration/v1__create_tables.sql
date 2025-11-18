@@ -1,6 +1,3 @@
--- Enable uuid if you want default uuid generation in DB (optional)
--- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE TABLE branch (
     id     UUID PRIMARY KEY,
     code   VARCHAR(20)  NOT NULL UNIQUE,
@@ -66,7 +63,6 @@ CREATE TABLE weighing (
     net_weight_kg             NUMERIC(15,3) NOT NULL,
     weighing_timestamp        TIMESTAMP NOT NULL,
     load_cost                 NUMERIC(15,2),
-    weighing_type             VARCHAR(20),
     CONSTRAINT fk_weighing_scale FOREIGN KEY (scale_id) REFERENCES scale (id),
     CONSTRAINT fk_weighing_grain_type FOREIGN KEY (grain_type_id) REFERENCES grain_type (id),
     CONSTRAINT fk_weighing_truck FOREIGN KEY (truck_id) REFERENCES truck (id),
