@@ -191,6 +191,10 @@ Dentro da IDE com o projeto aberto, acessar o terminal e rodar o seguinte comand
 
 mvn spring-boot:run
 
+Para rodar os testes basta rodar o seguinte comando:
+
+mvn clean test
+
 Padrão: http://localhost:8080
 
 ## Swagger
@@ -202,7 +206,7 @@ http://localhost:8080/v3/api-docs
 ## Evoluções Futuras
 Idempotência mais pesada utilizando chave baseada em external_id + timestamp, por exemplo.
 
-Kafka/SQS para inserção assíncrona
+Kafka/SQS para contextos assíncronos
 
 Métricas com grafana
 
