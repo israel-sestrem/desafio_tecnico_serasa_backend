@@ -209,5 +209,3 @@ Idempotência mais pesada utilizando chave baseada em external_id + timestamp, p
 Kafka/SQS para contextos assíncronos
 
 Métricas com grafana
-
-Dashboard realtime via WebSockets
