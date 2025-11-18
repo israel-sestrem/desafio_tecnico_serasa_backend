@@ -38,14 +38,14 @@ class WeighingServiceTest {
     @InjectMocks
     private WeighingService weighingService;
 
-    @Test
+    @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         when(properties.getMaxDiffBetweenReadingsKg()).thenReturn(BigDecimal.valueOf(5));
         when(properties.getRequiredStableReadings()).thenReturn(3);
     }
 
-    @BeforeEach
+    @Test
     void testFindByWeighingTimestampBetween() {
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
